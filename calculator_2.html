@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A/B Test Significance Calculator | Modern SaaS Style</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4F46E5; /* Indigo/Purple */
+            --primary-hover-color: #4338CA;
+            --success-color: #10B981; /* Emerald Green */
+            --error-color: #EF4444; /* Red */
+            --warning-color: #F59E0B; /* Amber */
+            --background-color: #F3F4F6; /* Cool Gray 100 */
+            --card-background-color: #FFFFFF;
+            --text-color-primary: #1F2937; /* Cool Gray 800 */
+            --text-color-secondary: #4B5563; /* Cool Gray 600 */
+            --border-color: #D1D5DB; /* Cool Gray 300 */
+            --input-background: #F9FAFB; /* Cool Gray 50 */
+            --font-family-sans: 'Inter', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family-sans);
+            line-height: 1.6;
+            margin: 0;
+            background-color: var(--background-color);
+            color: var(--text-color-primary);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top for scroll */
+            min-height: 100vh;
+            padding: 20px 0; /* Add some padding for scroll */
+        }
+
+        .container {
+            width: 100%;
+            max-width: 650px; /* Slightly wider for better spacing */
+            background: var(--card-background-color);
+            padding: 32px 40px; /* More padding */
+            border-radius: 12px; /* More rounded */
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.07), 0 4px 6px -2px rgba(0,0,0,0.05);
+            margin: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--text-color-primary);
+            font-size: 28px; /* Slightly larger */
+            font-weight: 700;
+            margin-bottom: 32px; /* More space below title */
+        }
+
+        .form-group {
+            margin-bottom: 24px; /* Increased spacing */
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500; /* Medium weight */
+            font-size: 14px;
+            color: var(--text-color-secondary);
+        }
+
+        input[type="number"], select {
+            width: 100%;
+            padding: 12px 16px; /* More padding */
+            border: 1px solid var(--border-color);
+            border-radius: 8px; /* More rounded */
+            box-sizing: border-box;
+            font-size: 16px;
+            background-color: var(--input-background);
+            color: var(--text-color-primary);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        input[type="number"]:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3); /* Focus ring */
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 14px 20px;
+            background-image: linear-gradient(to right, var(--primary-color) 0%, #6366F1 50%, var(--primary-color) 100%);
+            background-size: 200% auto;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background-position 0.4s ease, transform 0.1s ease;
+            margin-top: 16px; /* Space above button */
+        }
+
+        button:hover {
+            background-position: right center; /* Change gradient direction */
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .results {
+            margin-top: 32px;
+            padding: 24px;
+            background-color: var(--input-background); /* Lighter than card for contrast */
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .results h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-color-primary);
+        }
+
+        .results p {
+            margin: 10px 0;
+            font-size: 15px;
+            color: var(--text-color-secondary);
+        }
+        .results p strong {
+            color: var(--text-color-primary);
+            font-weight: 600;
+        }
+
+        .result-item { /* Wrapper for result lines for better spacing */
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #E5E7EB; /* Lighter border for internal items */
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .result-item span:first-child {
+            color: var(--text-color-secondary);
+        }
+        .result-item strong {
+            color: var(--text-color-primary);
+            font-weight: 500;
+        }
+
+
+        .significant {
+            color: var(--success-color) !important; /* Important to override p strong */
+            font-weight: 600;
+        }
+        .not-significant {
+            color: var(--warning-color) !important;
+            font-weight: 600;
+        }
+        .error {
+            color: var(--error-color);
+            font-weight: 500;
+            margin-top: 16px;
+            background-color: rgba(239, 68, 68, 0.1);
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .group-section {
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            margin-bottom: 24px;
+            border-radius: 8px;
+            background-color: #fff; /* Keep sections white if container is slightly off-white */
+        }
+        .group-section h3 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            color: var(--primary-color);
+            font-size: 18px;
+            font-weight: 600;
+        }
+        hr {
+           border: none;
+           border-top: 1px solid var(--border-color);
+           margin: 20px 0;
+        }
+
+        /* Small tweaks for better presentation of results */
+        #abs_lift_unit, #ci_lower_unit, #ci_upper_unit {
+            font-size: 0.9em;
+            color: var(--text-color-secondary);
+            margin-left: 2px;
+        }
+        #conclusion_wrapper {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        #conclusion_wrapper.significant-bg {
+            background-color: rgba(16, 185, 129, 0.1); /* Light green bg */
+        }
+        #conclusion_wrapper.not-significant-bg {
+            background-color: rgba(245, 158, 11, 0.1); /* Light amber bg */
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>A/B Test Calculator</h1>
+
+        <div class="form-group group-section">
+            <h3>Control Group (A)</h3>
+            <label for="visitors_a">Visitors (A):</label>
+            <input type="number" id="visitors_a" value="10000" placeholder="e.g., 10000">
+
+            <label for="conversions_a">Conversions (A):</label>
+            <input type="number" id="conversions_a" value="100" placeholder="e.g., 100">
+        </div>
+
+        <div class="form-group group-section">
+            <h3>Variant Group (B)</h3>
+            <label for="visitors_b">Visitors (B):</label>
+            <input type="number" id="visitors_b" value="10200" placeholder="e.g., 10200">
+
+            <label for="conversions_b">Conversions (B):</label>
+            <input type="number" id="conversions_b" value="125" placeholder="e.g., 125">
+        </div>
+
+        <div class="form-group">
+            <label for="confidence_level">Confidence Level:</label>
+            <select id="confidence_level">
+                <option value="0.90">90%</option>
+                <option value="0.95" selected>95%</option>
+                <option value="0.99">99%</option>
+            </select>
+        </div>
+
+        <button onclick="calculateSignificance()">Calculate Significance</button>
+
+        <div id="error-message" class="error" style="display:none;"></div>
+
+        <div id="results-container" class="results" style="display:none;">
+            <h2>Test Results</h2>
+            <div class="result-item">
+                <span>Control (A) Conversion Rate:</span>
+                <strong id="cr_a"></strong>
+            </div>
+            <div class="result-item">
+                <span>Variant (B) Conversion Rate:</span>
+                <strong id="cr_b"></strong>
+            </div>
+
+            <hr>
+
+            <div class="result-item">
+                <span>Absolute Lift (B - A):</span>
+                <span><strong id="abs_lift"></strong><span id="abs_lift_unit"> pp</span></span>
+            </div>
+            <div class="result-item">
+                <span>Relative Lift:</span>
+                <strong id="rel_lift"></strong>
+            </div>
+
+            <hr>
+
+            <div class="result-item">
+                <span>P-value:</span>
+                <strong id="p_value"></strong>
+            </div>
+            <div class="result-item">
+                <span>Confidence Interval (<span id="ci_level_display"></span>%):</span>
+                <span>[<strong id="ci_lower"></strong><span id="ci_lower_unit"> pp</span>, <strong id="ci_upper"></strong><span id="ci_upper_unit"> pp</span>]</span>
+            </div>
+
+            <div id="conclusion_wrapper">
+                <p>Conclusion: <strong id="conclusion"></strong></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Standard Normal variate for Z-score (approximations)
+        function erf(x) {
+            const a1 =  0.254829592; const a2 = -0.284496736;
+            const a3 =  1.421413741; const a4 = -1.453152027;
+            const a5 =  1.061405429; const p  =  0.3275911;
+            let sign = (x < 0) ? -1 : 1;
+            x = Math.abs(x);
+            const t = 1.0 / (1.0 + p * x);
+            const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+            return sign * y;
+        }
+
+        function standardNormalCDF(z) {
+            return 0.5 * (1 + erf(z / Math.sqrt(2)));
+        }
+
+        function pValueFromZAccurate(z) {
+            return 2 * (1 - standardNormalCDF(Math.abs(z)));
+        }
+
+        function zCriticalFromConfidence(confidence) {
+            if (confidence === 0.90) return 1.64485;
+            if (confidence === 0.95) return 1.95996;
+            if (confidence === 0.99) return 2.57583;
+            // Fallback for very custom values (requires inverse error function or more complex math)
+            // For simplicity, we'll stick to common values. For arbitrary alpha, use a library.
+            // This is a very rough approximation for other values based on NORMSINV in Excel.
+            const alpha = 1 - confidence;
+            const prob = 1 - alpha / 2;
+            // Simple approximation (Hastings,_Jr.) - Not as accurate as hardcoded ones
+            if (prob > 0.5) {
+                const y = Math.sqrt(-2 * Math.log(1-prob));
+                return y - (2.515517 + 0.802853*y + 0.010328*y*y) / (1 + 1.432788*y + 0.189269*y*y + 0.001308*y*y*y);
+            } else if (prob < 0.5) {
+                const y = Math.sqrt(-2 * Math.log(prob));
+                return -(y - (2.515517 + 0.802853*y + 0.010328*y*y) / (1 + 1.432788*y + 0.189269*y*y + 0.001308*y*y*y));
+            }
+            return 0; // Should not happen for valid prob
+        }
+
+        function calculateSignificance() {
+            const N_a = parseInt(document.getElementById('visitors_a').value);
+            const C_a = parseInt(document.getElementById('conversions_a').value);
+            const N_b = parseInt(document.getElementById('visitors_b').value);
+            const C_b = parseInt(document.getElementById('conversions_b').value);
+            const confidenceLevel = parseFloat(document.getElementById('confidence_level').value);
+
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+
+            if (isNaN(N_a) || isNaN(C_a) || isNaN(N_b) || isNaN(C_b)) {
+                errorDiv.textContent = "Error: All inputs must be valid numbers.";
+                errorDiv.style.display = 'block'; return;
+            }
+            if (N_a <= 0 || N_b <= 0) {
+                errorDiv.textContent = "Error: Number of visitors must be greater than 0.";
+                errorDiv.style.display = 'block'; return;
+            }
+            if (C_a < 0 || C_b < 0) {
+                errorDiv.textContent = "Error: Number of conversions cannot be negative.";
+                errorDiv.style.display = 'block'; return;
+            }
+            if (C_a > N_a || C_b > N_b) {
+                errorDiv.textContent = "Error: Conversions cannot exceed visitors for a group.";
+                errorDiv.style.display = 'block'; return;
+            }
+
+            const CR_a = C_a / N_a;
+            const CR_b = C_b / N_b;
+            const absLift = CR_b - CR_a;
+            const relLift = CR_a === 0 ? (CR_b > 0 ? Infinity : 0) : (absLift / CR_a);
+            const P_pool = (C_a + C_b) / (N_a + N_b);
+            const SE = Math.sqrt(P_pool * (1 - P_pool) * (1/N_a + 1/N_b));
+            const Z_score = SE === 0 ? (absLift === 0 ? 0 : (absLift > 0 ? Infinity : -Infinity)) : absLift / SE;
+            const p_value = pValueFromZAccurate(Z_score);
+            const Z_critical = zCriticalFromConfidence(confidenceLevel);
+            const ci_lower = absLift - Z_critical * SE;
+            const ci_upper = absLift + Z_critical * SE;
+            const alpha = 1 - confidenceLevel;
+
+            let conclusionText = "";
+            let conclusionClass = "";
+            let conclusionBgClass = "";
+
+            if (p_value < alpha) {
+                if (absLift > 0) {
+                    conclusionText = `Statistically significant uplift. Variant (B) is likely better than Control (A).`;
+                    conclusionClass = "significant";
+                    conclusionBgClass = "significant-bg";
+                } else if (absLift < 0) {
+                    conclusionText = `Statistically significant drop. Variant (B) is likely worse than Control (A).`;
+                    conclusionClass = "significant"; // Still significant, but negative can also be styled like error
+                    conclusionBgClass = "significant-bg"; // Or an error-like bg
+                } else {
+                    conclusionText = `Result is on the edge of significance (p < ${alpha.toFixed(3)}), but no actual lift observed.`;
+                    conclusionClass = "not-significant";
+                    conclusionBgClass = "not-significant-bg";
+                }
+            } else {
+                conclusionText = "Not statistically significant. There's not enough evidence to conclude a clear difference between A and B at this confidence level.";
+                conclusionClass = "not-significant";
+                conclusionBgClass = "not-significant-bg";
+            }
+
+            document.getElementById('cr_a').textContent = (CR_a * 100).toFixed(2) + '%';
+            document.getElementById('cr_b').textContent = (CR_b * 100).toFixed(2) + '%';
+            document.getElementById('abs_lift').textContent = (absLift * 100).toFixed(2);
+            document.getElementById('rel_lift').textContent = (relLift === Infinity || relLift === -Infinity) ? "N/A (Control CR is 0)" : (relLift * 100).toFixed(2) + '%';
+            document.getElementById('p_value').textContent = p_value.toFixed(4);
+            document.getElementById('ci_level_display').textContent = (confidenceLevel * 100);
+            document.getElementById('ci_lower').textContent = (ci_lower * 100).toFixed(2);
+            document.getElementById('ci_upper').textContent = (ci_upper * 100).toFixed(2);
+            
+            const conclusionEl = document.getElementById('conclusion');
+            conclusionEl.textContent = conclusionText;
+            conclusionEl.className = conclusionClass;
+
+            const conclusionWrapperEl = document.getElementById('conclusion_wrapper');
+            conclusionWrapperEl.className = conclusionBgClass;
+
+
+            document.getElementById('results-container').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
